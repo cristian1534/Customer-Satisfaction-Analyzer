@@ -11,7 +11,7 @@ def customer_satisfaction_analyzer(review: str):
         import requests
         
         # Ollama API endpoint
-        ollama_url = "http://localhost:11434/api/generate"
+        ollama_url = "http://localhost:11435/api/generate"
         
         # Prompt for sentiment analysis
         prompt = f"""
