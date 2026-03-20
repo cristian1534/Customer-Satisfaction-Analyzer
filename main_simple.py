@@ -181,17 +181,18 @@ async def get_visualizations(db: Session = Depends(get_db)):
 @app.post("/analyze", tags=["Reviews Routes"])
 async def analyze_with_llama(request: LlamaAnalysisRequest):
     """
-    Analiza un review usando Llama3.1 a través de Ollama
+    Analyze a review using Llama3.1 through Ollama
     """
     try:
         payload = {
             "model": "llama3.1",
             "prompt": f"""
-        Analiza este review y devolvé SOLO en este formato JSON:
-        {{
-          "sentiment": "positivo/negativo/mixto",
+        Analyze the customer review and respond with ONLY a JSON object:
+        
+        Format: {{
+          "sentiment": "positive/negative/mixed",
           "score": 0.0,
-          "summary": "resumen corto"
+          "summary": "brief summary in English"
         }}
 
         Review: {request.review}

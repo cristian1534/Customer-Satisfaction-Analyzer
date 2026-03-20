@@ -19,7 +19,7 @@ def customer_satisfaction_analyzer(review: str):
         
         Review: "{review}"
         
-        Return format: {{"sentiment": "positive/negative/neutral", "confidence": 0.0-1.0, "explanation": "brief explanation"}}
+        Return format: {{"sentiment": "positive/negative/neutral", "confidence": 0.0-1.0, "explanation": "brief explanation in English"}}
         """
         
         payload = {
