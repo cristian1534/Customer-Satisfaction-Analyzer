@@ -187,63 +187,20 @@ async def get_visualizations(db: Session = Depends(get_db)):
 @app.post("/analyze", tags=["Reviews Routes"])
 async def analyze_with_llama(request: LlamaAnalysisRequest):
     """
-    Analyze a review using Llama3.1 through Ollama
+    Analyze a review using Llama3.1 through Ollama with fallback
     """
     try:
-        payload = {
-            "model": "llama3.1",
-            "prompt": f"""
-        Analyze the customer review and respond with ONLY a JSON object:
+        # Use the customer_satisfaction_analyzer which has fallback built-in
+        analysis_result = customer_satisfaction_analyzer(request.review)
         
-        Format: {{
-          "sentiment": "positive/negative/mixed",
-          "score": 0.0,
-          "summary": "brief summary in English"
-        }}
-
-        Review: {request.review}
-        """,
-            "stream": False
+        # Convert to the expected format for this endpoint
+        return {
+            "sentiment": analysis_result['sentiment_label'],
+            "score": analysis_result['sentiment_score'],
+            "summary": analysis_result.get('explanation', 'Analysis completed'),
+            "review": request.review
         }
-
-        response = requests.post(os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate"), json=payload, timeout=120)
-        response.raise_for_status()
         
-        # Extraer la respuesta y parsear
-        data = response.json()
-        llm_response = data.get("response", "")
-        
-        # Intentar parsear el JSON de la respuesta
-        try:
-            # Buscar JSON en la respuesta
-            import json
-            import re
-            
-            # Buscar patrón JSON en el texto
-            json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
-            if json_match:
-                parsed_data = json.loads(json_match.group())
-            else:
-                # Si no encuentra JSON, crear respuesta por defecto
-                parsed_data = {
-                    "sentiment": "neutral",
-                    "score": 0.5,
-                    "summary": "No se pudo procesar el análisis"
-                }
-        except:
-            parsed_data = {
-                "sentiment": "neutral", 
-                "score": 0.5,
-                "summary": "Error en el análisis"
-            }
-        
-        # Agregar el review original
-        parsed_data["review"] = request.review
-        
-        return parsed_data
-        
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Error communicating with Llama3.1: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error in analysis: {str(e)}")
 
