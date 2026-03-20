@@ -74,17 +74,19 @@ def customer_satisfaction_analyzer(review: str):
                     "explanation": analysis.get("explanation", "")
                 }
             else:
-                print("DEBUG: No JSON bounds found")
-                raise Exception("No JSON found in response")
+                print("DEBUG: No JSON bounds found, using fallback")
                 
         except json.JSONDecodeError as e:
             print(f"DEBUG: JSON decode error: {e}")
-            raise Exception(f"JSON decode error: {e}")
+        
+        # Fallback if Ollama fails
+        print("DEBUG: Using fallback due to parsing issues")
+        return fallback_sentiment_analysis(review)
         
     except Exception as e:
         print(f"DEBUG: Exception occurred: {e}")
-        # For now, raise the exception instead of using fallback
-        raise Exception(f"Analysis failed: {str(e)}")
+        # Fallback for any errors (Ollama not available, network issues, etc.)
+        return fallback_sentiment_analysis(review)
 
 def fallback_sentiment_analysis(review: str) -> Dict:
     """
