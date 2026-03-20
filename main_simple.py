@@ -49,12 +49,11 @@ async def create_review(review: ReviewCreate, db: Session = Depends(get_db)):
     """
     try:
         # Customer satisfaction analysis
-        analysis_result = customer_satisfaction_analyzer.analyze_review(review.review)
-        general_sentiment = analysis_result['general_sentiment']
+        analysis_result = customer_satisfaction_analyzer(review.review)
         
         # Use values from analyzer directly
-        satisfaction_label = general_sentiment['satisfaction_label']
-        satisfaction_score = general_sentiment['satisfaction_score']
+        satisfaction_label = analysis_result['sentiment_label']
+        satisfaction_score = analysis_result['sentiment_score']
         
         # Create review record
         db_review = Review(
@@ -128,12 +127,18 @@ async def detailed_analysis(review: ReviewCreate):
     Perform detailed customer satisfaction analysis sentence by sentence
     """
     try:
-        analysis_result = customer_satisfaction_analyzer.analyze_sentences(review.review)
+        # Simple analysis since we don't have the complex analyzer anymore
+        analysis_result = customer_satisfaction_analyzer(review.review)
         
         return {
             "original_review": review.review,
-            "sentence_analysis": analysis_result,
-            "total_sentences": len(analysis_result)
+            "sentence_analysis": [{
+                "sentence": review.review,
+                "sentiment": analysis_result['sentiment_label'],
+                "score": analysis_result['sentiment_score'],
+                "confidence": analysis_result['confidence']
+            }],
+            "total_sentences": 1
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error in detailed analysis: {str(e)}")
