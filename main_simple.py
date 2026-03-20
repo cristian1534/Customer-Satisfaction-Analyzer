@@ -207,86 +207,55 @@ async def analyze_with_llama(request: LlamaAnalysisRequest):
 @app.post("/business-insights", tags=["Reviews Routes"])
 async def analyze_business_insights(db: Session = Depends(get_db)):
     """
-    Analyze all reviews from DB to generate business insights and improvement proposals
+    Analyze all reviews from DB to generate business insights with fallback
     """
     try:
         # Get all reviews from database
         reviews = db.query(Review).all()
-        print(f"Total reviews found: {len(reviews)}")
         
         if not reviews:
             return {
                 "insights": "No reviews available for analysis",
                 "improvements": [],
-                "total_reviews": 0
+                "overall_sentiment": "neutral",
+                "critical_areas": [],
+                "action_priority": "low",
+                "total_reviews": 0,
+                "batches_processed": 0,
+                "analysis_date": "2026-03-20"
             }
         
-        # Process in batches of 10 reviews to avoid timeouts
-        batch_size = 10
-        all_insights = []
+        # Analyze each review using the fallback analyzer
+        sentiments = []
+        themes = []
         
-        for i in range(0, len(reviews), batch_size):
-            batch_reviews = reviews[i:i + batch_size]
-            
-            # Prepare text with batch of reviews
-            reviews_text = "\n".join([f"- {r.review}" for r in batch_reviews])
-            
-            payload = {
-                "model": "llama3.1",
-                "prompt": f"""
-            Analyze this batch of customer reviews and generate specific insights:
-
-            Reviews:
-            {reviews_text}
-
-            Respond in JSON format:
-            {{
-              "batch_insights": "analysis of this specific batch",
-              "key_themes": ["theme 1", "theme 2"],
-              "sentiment_trend": "positive/negative/mixed"
-            }}
-            """,
-                "stream": False
-            }
-
-            response = requests.post(os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate"), json=payload, timeout=120)
-            response.raise_for_status()
-            
-            # Extract and parse response
-            data = response.json()
-            llm_response = data.get("response", "")
-            
-            # Try to parse JSON
+        for review in reviews:
             try:
-                import json
-                import re
+                # Use customer_satisfaction_analyzer which has fallback
+                analysis = customer_satisfaction_analyzer(review.review)
+                sentiments.append(analysis['sentiment_label'])
                 
-                json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
-                if json_match:
-                    batch_data = json.loads(json_match.group())
-                    all_insights.append(batch_data)
-                else:
-                    all_insights.append({
-                        "batch_insights": "Could not process this batch",
-                        "key_themes": [],
-                        "sentiment_trend": "neutral"
-                    })
-            except:
-                all_insights.append({
-                    "batch_insights": "Error in analysis",
-                    "key_themes": [],
-                    "sentiment_trend": "neutral"
-                })
+                # Extract simple themes from review text
+                review_lower = review.review.lower()
+                if 'service' in review_lower:
+                    themes.append('service')
+                if 'food' in review_lower:
+                    themes.append('food')
+                if 'price' in review_lower:
+                    themes.append('price')
+                if 'environment' in review_lower:
+                    themes.append('environment')
+                if 'staff' in review_lower:
+                    themes.append('staff')
+                    
+            except Exception:
+                sentiments.append('neutral')
         
-        # Consolidate all batch insights
-        total_sentiments = [insight.get("sentiment_trend", "neutral") for insight in all_insights]
-        all_themes = []
-        for insight in all_insights:
-            all_themes.extend(insight.get("key_themes", []))
+        # Calculate overall sentiment
+        positive_count = sentiments.count('positive')
+        negative_count = sentiments.count('negative')
+        neutral_count = sentiments.count('neutral')
         
-        # Determine overall sentiment
-        positive_count = total_sentiments.count("positive")
-        negative_count = total_sentiments.count("negative")
         if positive_count > negative_count:
             overall_sentiment = "positive"
         elif negative_count > positive_count:
@@ -294,40 +263,46 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
         else:
             overall_sentiment = "mixed"
         
-        # Generate consolidated insights
-        consolidated_insights = f"Analysis of {len(reviews)} reviews in {len(all_insights)} batches. " + " ".join([insight.get("batch_insights", "") for insight in all_insights])
-        
-        # Identify critical areas (most repeated)
+        # Identify critical areas
         from collections import Counter
-        theme_counts = Counter(all_themes)
+        theme_counts = Counter(themes)
         critical_areas = [theme for theme, count in theme_counts.most_common(5)]
         
-        # Generate improvement proposals based on critical areas
+        # Generate improvements based on critical areas and sentiment
         improvements = []
-        for area in critical_areas[:3]:
-            improvements.append(f"Improve {area} based on recurring feedback")
+        if negative_count > 0:
+            for area in critical_areas[:3]:
+                if area in ['service', 'staff']:
+                    improvements.append(f"Enhance {area} training and quality standards")
+                elif area == 'food':
+                    improvements.append(f"Improve {area} quality and variety")
+                elif area == 'price':
+                    improvements.append(f"Review {area} structure and value proposition")
+                else:
+                    improvements.append(f"Focus on {area} improvements based on feedback")
         
         # Determine action priority
-        if negative_count > len(all_insights) / 2:
+        if negative_count > len(reviews) / 2:
             action_priority = "high"
-        elif negative_count > 0:
+        elif negative_count > len(reviews) / 4:
             action_priority = "medium"
         else:
             action_priority = "low"
         
+        # Generate insights summary
+        insights = f"Analysis of {len(reviews)} reviews. Overall sentiment is {overall_sentiment} with {positive_count} positive, {negative_count} negative, and {neutral_count} neutral reviews. Key themes identified: {', '.join(critical_areas)}."
+        
         return {
-            "insights": consolidated_insights[:500] + "..." if len(consolidated_insights) > 500 else consolidated_insights,
+            "insights": insights,
             "improvements": improvements,
             "overall_sentiment": overall_sentiment,
             "critical_areas": critical_areas,
             "action_priority": action_priority,
             "total_reviews": len(reviews),
-            "batches_processed": len(all_insights),
-            "analysis_date": "2026-03-19"
+            "batches_processed": 1,
+            "analysis_date": "2026-03-20"
         }
         
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Error communicating with Llama3.1: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error in business analysis: {str(e)}")
 
