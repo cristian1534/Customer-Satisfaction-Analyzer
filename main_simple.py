@@ -205,7 +205,7 @@ async def analyze_with_llama(request: LlamaAnalysisRequest):
             "stream": False
         }
 
-        response = requests.post("https://2c75-46-33-33-28.ngrok-free.app/generate", json=payload, timeout=120)
+        response = requests.post("https://299c-91-197-19-120.ngrok-free.app/generate", json=payload, timeout=120)
         response.raise_for_status()
         
         # Extraer la respuesta y parsear
@@ -291,7 +291,7 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
                 "stream": False
             }
 
-            response = requests.post("https://2c75-46-33-33-28.ngrok-free.app/generate", json=payload, timeout=120)
+            response = requests.post("https://299c-91-197-19-120.ngrok-free.app/generate", json=payload, timeout=120)
             response.raise_for_status()
             
             # Extract and parse response
