@@ -14,6 +14,8 @@ def customer_satisfaction_analyzer(review: str):
         # Ollama API endpoint from environment variable
         ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate")
         
+        print(f"DEBUG: Using Ollama URL: {ollama_url}")
+        
         # Prompt for sentiment analysis
         prompt = f"""
         Analyze the sentiment of this customer review and respond with ONLY a JSON object:
@@ -32,6 +34,8 @@ def customer_satisfaction_analyzer(review: str):
                 "max_tokens": 100
             }
         }
+        
+        print(f"DEBUG: Sending payload: {payload}")
         
         response = requests.post(ollama_url, json=payload, timeout=10)
         
@@ -70,18 +74,17 @@ def customer_satisfaction_analyzer(review: str):
                     "explanation": analysis.get("explanation", "")
                 }
             else:
-                print("DEBUG: No JSON bounds found, using fallback")
+                print("DEBUG: No JSON bounds found")
+                raise Exception("No JSON found in response")
+                
         except json.JSONDecodeError as e:
             print(f"DEBUG: JSON decode error: {e}")
-        
-        # Fallback if Ollama fails
-        print("DEBUG: Using fallback due to parsing issues")
-        return fallback_sentiment_analysis(review)
+            raise Exception(f"JSON decode error: {e}")
         
     except Exception as e:
         print(f"DEBUG: Exception occurred: {e}")
-        # Fallback for any errors (Ollama not available, network issues, etc.)
-        return fallback_sentiment_analysis(review)
+        # For now, raise the exception instead of using fallback
+        raise Exception(f"Analysis failed: {str(e)}")
 
 def fallback_sentiment_analysis(review: str) -> Dict:
     """
