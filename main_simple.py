@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 import requests
+import os
 
 from datetime import datetime
 from database import get_db, create_tables, Review, User
@@ -205,7 +206,7 @@ async def analyze_with_llama(request: LlamaAnalysisRequest):
             "stream": False
         }
 
-        response = requests.post("https://299c-91-197-19-120.ngrok-free.app/generate", json=payload, timeout=120)
+        response = requests.post(os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate"), json=payload, timeout=120)
         response.raise_for_status()
         
         # Extraer la respuesta y parsear
@@ -291,7 +292,7 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
                 "stream": False
             }
 
-            response = requests.post("https://299c-91-197-19-120.ngrok-free.app/generate", json=payload, timeout=120)
+            response = requests.post(os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate"), json=payload, timeout=120)
             response.raise_for_status()
             
             # Extract and parse response
@@ -387,6 +388,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
         
         # Generate simple token (in production, use JWT)
         from jose import jwt
+        import os
         from datetime import datetime, timedelta
         
         token = jwt.encode(

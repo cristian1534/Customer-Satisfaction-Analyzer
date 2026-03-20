@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict
 
 def customer_satisfaction_analyzer(review: str):
@@ -10,8 +11,8 @@ def customer_satisfaction_analyzer(review: str):
         # Try to use Ollama if available
         import requests
         
-        # Ollama API endpoint
-        ollama_url = "https://299c-91-197-19-120.ngrok-free.app/generate"
+        # Ollama API endpoint from environment variable
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate")
         
         # Prompt for sentiment analysis
         prompt = f"""
