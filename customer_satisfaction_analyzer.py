@@ -37,7 +37,7 @@ def customer_satisfaction_analyzer(review: str):
         
         print(f"DEBUG: Sending payload: {payload}")
         
-        response = requests.post(ollama_url, json=payload, timeout=10)
+        response = requests.post(ollama_url, json=payload, timeout=120)
         
         print(f"DEBUG: Ollama response status: {response.status_code}")
         print(f"DEBUG: Ollama response text: {response.text[:200]}...")
