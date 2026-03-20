@@ -381,7 +381,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=401, detail="Invalid username or password")
         
         # Generate simple token (in production, use JWT)
-        import jwt
+        from jose import jwt
         from datetime import datetime, timedelta
         
         token = jwt.encode(
