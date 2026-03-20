@@ -35,28 +35,33 @@ def customer_satisfaction_analyzer(review: str):
         
         response = requests.post(ollama_url, json=payload, timeout=10)
         
-        if response.status_code == 200:
-            result = response.json()
-            response_text = result.get("response", "")
+        # Check if response is successful
+        if response.status_code != 200:
+            raise Exception(f"Ollama returned status {response.status_code}")
+        
+        response.raise_for_status()
+        
+        result = response.json()
+        response_text = result.get("response", "")
+        
+        # Extract JSON from response
+        try:
+            # Find JSON in the response
+            start_idx = response_text.find("{")
+            end_idx = response_text.rfind("}") + 1
             
-            # Extract JSON from response
-            try:
-                # Find JSON in the response
-                start_idx = response_text.find("{")
-                end_idx = response_text.rfind("}") + 1
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_text[start_idx:end_idx]
+                analysis = json.loads(json_str)
                 
-                if start_idx != -1 and end_idx != -1:
-                    json_str = response_text[start_idx:end_idx]
-                    analysis = json.loads(json_str)
-                    
-                    return {
-                        "sentiment_score": 0.8 if analysis.get("sentiment") == "positive" else -0.8 if analysis.get("sentiment") == "negative" else 0.0,
-                        "sentiment_label": analysis.get("sentiment", "neutral"),
-                        "confidence": analysis.get("confidence", 0.5),
-                        "explanation": analysis.get("explanation", "")
-                    }
-            except json.JSONDecodeError:
-                pass
+                return {
+                    "sentiment_score": 0.8 if analysis.get("sentiment") == "positive" else -0.8 if analysis.get("sentiment") == "negative" else 0.0,
+                    "sentiment_label": analysis.get("sentiment", "neutral"),
+                    "confidence": analysis.get("confidence", 0.5),
+                    "explanation": analysis.get("explanation", "")
+                }
+        except json.JSONDecodeError:
+            pass
         
         # Fallback if Ollama fails
         return fallback_sentiment_analysis(review)
