@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 import requests
 import os
+import json
 
 from datetime import datetime
 from database import get_db, create_tables, Review, User
@@ -207,7 +208,7 @@ async def analyze_with_llama(request: LlamaAnalysisRequest):
 @app.post("/business-insights", tags=["Reviews Routes"])
 async def analyze_business_insights(db: Session = Depends(get_db)):
     """
-    Analyze all reviews from DB to generate business insights with fallback
+    Analyze all reviews from DB to generate business insights using Ollama
     """
     try:
         # Get all reviews from database
@@ -225,17 +226,83 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
                 "analysis_date": "2026-03-20"
             }
         
-        # Analyze each review using the fallback analyzer
+        # Prepare reviews text for Ollama analysis
+        reviews_text = "\n".join([f"- {review.review}" for review in reviews])
+        
+        # Use Ollama for comprehensive insights analysis
+        payload = {
+            "model": "llama3.1",
+            "prompt": f"""
+            Analyze these customer reviews and generate comprehensive business insights:
+            
+            Reviews:
+            {reviews_text}
+            
+            Respond with ONLY a JSON object containing:
+            {{
+              "overall_sentiment": "positive/negative/mixed",
+              "key_insights": "detailed analysis of customer feedback patterns",
+              "critical_areas": ["area1", "area2", "area3"],
+              "improvements": ["specific action 1", "specific action 2", "specific action 3"],
+              "action_priority": "high/medium/low"
+            }}
+            """,
+            "stream": False,
+            "options": {
+                "temperature": 0.1,
+                "max_tokens": 300
+            }
+        }
+        
+        print(f"DEBUG: Business insights payload prepared for {len(reviews)} reviews")
+        
+        response = requests.post(os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate"), json=payload, timeout=120)
+        response.raise_for_status()
+        
+        result = response.json()
+        response_text = result.get("response", "")
+        
+        print(f"DEBUG: Business insights response: {response_text}")
+        
+        # Extract JSON from response
+        try:
+            start_idx = response_text.find("{")
+            end_idx = response_text.rfind("}") + 1
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_text[start_idx:end_idx]
+                insights_data = json.loads(json_str)
+                print(f"DEBUG: Parsed insights: {insights_data}")
+                
+                return {
+                    "insights": insights_data.get("key_insights", "Analysis completed"),
+                    "improvements": insights_data.get("improvements", []),
+                    "overall_sentiment": insights_data.get("overall_sentiment", "neutral"),
+                    "critical_areas": insights_data.get("critical_areas", []),
+                    "action_priority": insights_data.get("action_priority", "medium"),
+                    "total_reviews": len(reviews),
+                    "batches_processed": 1,
+                    "analysis_date": "2026-03-20"
+                }
+            else:
+                print("DEBUG: No JSON found in business insights response")
+                raise Exception("No JSON found in response")
+                
+        except json.JSONDecodeError as e:
+            print(f"DEBUG: JSON decode error in business insights: {e}")
+            raise Exception(f"JSON decode error: {e}")
+        
+    except Exception as e:
+        print(f"DEBUG: Business insights exception: {e}")
+        # Fallback to simple analysis if Ollama fails
         sentiments = []
         themes = []
         
         for review in reviews:
             try:
-                # Use customer_satisfaction_analyzer which has fallback
                 analysis = customer_satisfaction_analyzer(review.review)
                 sentiments.append(analysis['sentiment_label'])
                 
-                # Extract simple themes from review text
                 review_lower = review.review.lower()
                 if 'service' in review_lower:
                     themes.append('service')
@@ -251,7 +318,6 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
             except Exception:
                 sentiments.append('neutral')
         
-        # Calculate overall sentiment
         positive_count = sentiments.count('positive')
         negative_count = sentiments.count('negative')
         neutral_count = sentiments.count('neutral')
@@ -263,12 +329,10 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
         else:
             overall_sentiment = "mixed"
         
-        # Identify critical areas
         from collections import Counter
         theme_counts = Counter(themes)
         critical_areas = [theme for theme, count in theme_counts.most_common(5)]
         
-        # Generate improvements based on critical areas and sentiment
         improvements = []
         if negative_count > 0:
             for area in critical_areas[:3]:
@@ -281,7 +345,6 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
                 else:
                     improvements.append(f"Focus on {area} improvements based on feedback")
         
-        # Determine action priority
         if negative_count > len(reviews) / 2:
             action_priority = "high"
         elif negative_count > len(reviews) / 4:
@@ -289,7 +352,6 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
         else:
             action_priority = "low"
         
-        # Generate insights summary
         insights = f"Analysis of {len(reviews)} reviews. Overall sentiment is {overall_sentiment} with {positive_count} positive, {negative_count} negative, and {neutral_count} neutral reviews. Key themes identified: {', '.join(critical_areas)}."
         
         return {
@@ -302,9 +364,6 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
             "batches_processed": 1,
             "analysis_date": "2026-03-20"
         }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error in business analysis: {str(e)}")
 
 @app.post("/login", response_model=LoginResponse, tags=["Reviews Routes"])
 async def login(request: LoginRequest, db: Session = Depends(get_db)):
