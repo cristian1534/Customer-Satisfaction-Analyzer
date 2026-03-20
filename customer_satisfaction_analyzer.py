@@ -35,6 +35,9 @@ def customer_satisfaction_analyzer(review: str):
         
         response = requests.post(ollama_url, json=payload, timeout=10)
         
+        print(f"DEBUG: Ollama response status: {response.status_code}")
+        print(f"DEBUG: Ollama response text: {response.text[:200]}...")
+        
         # Check if response is successful
         if response.status_code != 200:
             raise Exception(f"Ollama returned status {response.status_code}")
@@ -44,15 +47,21 @@ def customer_satisfaction_analyzer(review: str):
         result = response.json()
         response_text = result.get("response", "")
         
+        print(f"DEBUG: Extracted response_text: {response_text}")
+        
         # Extract JSON from response
         try:
             # Find JSON in the response
             start_idx = response_text.find("{")
             end_idx = response_text.rfind("}") + 1
             
+            print(f"DEBUG: JSON bounds: {start_idx} to {end_idx}")
+            
             if start_idx != -1 and end_idx != -1:
                 json_str = response_text[start_idx:end_idx]
+                print(f"DEBUG: Extracted JSON: {json_str}")
                 analysis = json.loads(json_str)
+                print(f"DEBUG: Parsed analysis: {analysis}")
                 
                 return {
                     "sentiment_score": 0.8 if analysis.get("sentiment") == "positive" else -0.8 if analysis.get("sentiment") == "negative" else 0.0,
@@ -60,13 +69,17 @@ def customer_satisfaction_analyzer(review: str):
                     "confidence": analysis.get("confidence", 0.5),
                     "explanation": analysis.get("explanation", "")
                 }
-        except json.JSONDecodeError:
-            pass
+            else:
+                print("DEBUG: No JSON bounds found, using fallback")
+        except json.JSONDecodeError as e:
+            print(f"DEBUG: JSON decode error: {e}")
         
         # Fallback if Ollama fails
+        print("DEBUG: Using fallback due to parsing issues")
         return fallback_sentiment_analysis(review)
         
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG: Exception occurred: {e}")
         # Fallback for any errors (Ollama not available, network issues, etc.)
         return fallback_sentiment_analysis(review)
 
