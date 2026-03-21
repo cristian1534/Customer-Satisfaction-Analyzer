@@ -26,7 +26,7 @@ def customer_satisfaction_analyzer(review: str):
         """
         
         payload = {
-            "model": "llama3.1",
+            "model": "mistral",
             "prompt": prompt,
             "stream": False,
             "options": {
