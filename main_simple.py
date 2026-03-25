@@ -231,7 +231,7 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
         
         # Use Ollama for comprehensive insights analysis
         payload = {
-            "model": "mistral",
+            "model": "mistral:latest",
             "prompt": f"""
             Analyze these customer reviews and generate comprehensive business insights:
             

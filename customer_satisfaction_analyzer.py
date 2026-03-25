@@ -26,7 +26,7 @@ def customer_satisfaction_analyzer(review: str):
         """
         
         payload = {
-            "model": "mistral",
+            "model": "mistral:latest",
             "prompt": prompt,
             "stream": False,
             "options": {
