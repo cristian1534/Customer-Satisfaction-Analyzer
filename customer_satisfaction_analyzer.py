@@ -15,6 +15,7 @@ def customer_satisfaction_analyzer(review: str):
         ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11435/api/generate")
         
         print(f"DEBUG: Using Ollama URL: {ollama_url}")
+        print(f"DEBUG: Environment OLLAMA_URL: {os.getenv('OLLAMA_URL', 'NOT_SET')}")
         
         # Prompt for sentiment analysis
         prompt = f"""
@@ -49,7 +50,12 @@ def customer_satisfaction_analyzer(review: str):
         response.raise_for_status()
         
         result = response.json()
-        response_text = result.get("response", "")
+        
+        # Extract response from Ollama format
+        if "choices" in result and len(result["choices"]) > 0:
+            response_text = result["choices"][0]["text"]
+        else:
+            response_text = result.get("response", "")
         
         print(f"DEBUG: Extracted response_text: {response_text}")
         

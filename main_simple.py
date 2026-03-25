@@ -14,6 +14,8 @@ from analytics_visualizer import analytics_visualizer
 
 load_dotenv()
 
+print(f"DEBUG: OLLAMA_URL at startup: {os.getenv('OLLAMA_URL', 'NOT_SET')}")
+
 app = FastAPI(
     title="Customer Satisfaction Analysis API", 
     version="1.0.0",
