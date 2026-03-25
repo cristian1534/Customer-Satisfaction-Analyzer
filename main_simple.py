@@ -262,7 +262,12 @@ async def analyze_business_insights(db: Session = Depends(get_db)):
         response.raise_for_status()
         
         result = response.json()
-        response_text = result.get("response", "")
+        
+        # Extract response from Ollama format
+        if "choices" in result and len(result["choices"]) > 0:
+            response_text = result["choices"][0]["text"]
+        else:
+            response_text = result.get("response", "")
         
         print(f"DEBUG: Business insights response: {response_text}")
         
