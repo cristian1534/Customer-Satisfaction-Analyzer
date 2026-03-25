@@ -4,7 +4,7 @@ from typing import Dict
 
 def customer_satisfaction_analyzer(review: str):
     """
-    Analyze customer satisfaction using Ollama Llama3.1 model
+    Analyze customer satisfaction using Mistral model
     Returns sentiment score and label
     """
     try:

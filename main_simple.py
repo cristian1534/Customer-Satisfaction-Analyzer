@@ -188,7 +188,7 @@ async def get_visualizations(db: Session = Depends(get_db)):
 @app.post("/analyze", tags=["Reviews Routes"])
 async def analyze_with_llama(request: LlamaAnalysisRequest):
     """
-    Analyze a review using Llama3.1 through Ollama with fallback
+    Analyze a review using Mistral through Ollama with fallback
     """
     try:
         # Use the customer_satisfaction_analyzer which has fallback built-in
@@ -208,7 +208,7 @@ async def analyze_with_llama(request: LlamaAnalysisRequest):
 @app.post("/business-insights", tags=["Reviews Routes"])
 async def analyze_business_insights(db: Session = Depends(get_db)):
     """
-    Analyze all reviews from DB to generate business insights using Ollama
+    Analyze all reviews from DB to generate business insights using Mistral
     """
     try:
         # Get all reviews from database
